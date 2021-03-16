@@ -1,49 +1,124 @@
 const { response, request } = require('express');
+const { validationResult } = require('express-validator');
+const bcryptjs = require('bcryptjs');
+const User = require('../models/user');
 
-const getUser = (req = request, res = response) => {
+const getUser = async (req = request, res = response) => {
   //res.send('Hello World!');
   //Con la destructuracion podemos definir valores por defecto
-  const {q, nombre = "No name", apikey, page = 1, limit = 10}= req.query;
+  //const {q, nombre = "No name", apikey, page = 1, limit = 10}= req.query;
+
+  // res.json({
+  //   msg: 'GET API REQUEST FROM CONTROLLER',
+  //   q,
+  //   nombre,
+  //   apikey,
+  //   page,
+  //   limit
+  // })
+
+  const { limit = 5, desde = 0 } = req.query; 
+  const query = { state:true }
+
+  //todo validacion de que el limite y desde sea un numero y no un texto
+  // const users = await User.find(query)
+  //   .skip(Number(desde))  
+  //   .limit(Number(limit));
+
+  //const total = await User.countDocuments(query);
+
+  //Mas rapidas se ejecutan en paralelo
+  const [total, users] = await Promise.all([
+    User.countDocuments(query),
+    User.find(query).skip(Number(desde)).limit(Number(limit))
+  ])
 
   res.json({
     msg: 'GET API REQUEST FROM CONTROLLER',
-    q,
-    nombre,
-    apikey,
-    page,
-    limit
+    total,
+    count: users.length,
+    users
   })
 }
 
-const postUser = (req = request, res = response) => {
+const postUser = async(req = request, res = response) => {
   //res.send('Hello World!');
   //Se puede hacer destructuring para recibir unicamente la informacion que yo necesito
-  const body = req.body;
+  const { name, email, password, role } = req.body;
+  const user = new User({name, email, password, role});
 
-  res.json({
-    msg: 'POST API REQUEST FROM CONTROLLER',
-    ...body
+  //encriptacion
+  //es el numero de iteraciones (vueltas) que deben hacerse para encriptar la contraseña entre mas alta mas segura
+  //pero mas tiempo tarda generandola
+  const salt = bcryptjs.genSaltSync(10);
+  user.password = bcryptjs.hashSync(password, salt);
+
+  try {
+    await user.save();
+
+    return res.json({
+      msg: 'User saved successfully',
+      user
+    });
+  } catch (error){
+    return res.status(500).json({
+      msg: 'No se pudo grabar el usuario en la base de datos',
+      error
+    });
+  }
+  // res.json({
+  //   msg: 'POST API REQUEST FROM CONTROLLER',
+  //   ...body
+  // });
+}
+
+const putUser = async (req = request, res = response) => {
+  //res.send('Hello World!');
+  const { id }= req.params;
+  //se debe evitar recibir alguna variable _id que entre en conflicto con el _id de la base de datos
+  const { _id, password, google, ...rest } = req.body;
+
+
+  if(password) {
+    const salt = bcryptjs.genSaltSync(10);
+    rest.password = bcryptjs.hashSync(password, salt);
+  }
+
+  //const user = await User.findByIdAndUpdate(id, rest, {new: true, context: 'query'}, function (error, model) {
+  const user = await User.findByIdAndUpdate(id, rest, {new: true}, (error, model) => {
+    if(error) {
+      return res.status(500).json({
+        msg: 'No se pudo actualizar el usuario en la base de datos',
+        error
+      })
+    }
+    res.json({
+      msg: 'PUT API REQUEST FROM CONTROLLER',
+      user: model.toJSON()
+    })
   });
+
 }
 
-const putUser = (req = request, res = response) => {
+const deleteUser = async (req = request, res = response) => {
   //res.send('Hello World!');
-  const id = req.params.id;
+  const { id } = req.params;
+  //fisicamente
+  //const user = await User.findByIdAndDelete(id);
 
-  res.json({
-    msg: 'PUT API REQUEST FROM CONTROLLER',
-    id : id
-  })
-}
-
-const deleteUser = (req = request, res = response) => {
-  //res.send('Hello World!');
-  const id = req.params.id;
-
-  res.json({
-    msg: 'PUT API REQUEST FROM CONTROLLER',
-    id : id
-  })
+  //logicamente
+  const user = await User.findByIdAndUpdate(id, {state:false}, {new:true}, (error, model) => {
+    if(error) {
+      return res.status(500).json({
+        msg: 'No se pudo eliminar el usuario en la base de datos',
+        error
+      })
+    }
+    res.json({
+      msg: 'DELETE API REQUEST FROM CONTROLLER',
+      user: model.toJSON()
+    })
+  });
 }
 
 module.exports = {
