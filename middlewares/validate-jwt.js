@@ -33,7 +33,8 @@ const isValidJWT =async (req = request, res = response, next) => {
     
     next();
   } catch (error) {
-    //console.log(error);
+    //los console que imprimimos aqui tambien se almacenaran en un log en heroku
+    console.log(error);
     return res.status(401).json({
       msg:'Token no valido'
     })
