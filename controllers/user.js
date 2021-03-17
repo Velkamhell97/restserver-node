@@ -1,5 +1,4 @@
 const { response, request } = require('express');
-const { validationResult } = require('express-validator');
 const bcryptjs = require('bcryptjs');
 const User = require('../models/user');
 
@@ -78,7 +77,6 @@ const putUser = async (req = request, res = response) => {
   //se debe evitar recibir alguna variable _id que entre en conflicto con el _id de la base de datos
   const { _id, password, google, ...rest } = req.body;
 
-
   if(password) {
     const salt = bcryptjs.genSaltSync(10);
     rest.password = bcryptjs.hashSync(password, salt);
@@ -103,8 +101,14 @@ const putUser = async (req = request, res = response) => {
 const deleteUser = async (req = request, res = response) => {
   //res.send('Hello World!');
   const { id } = req.params;
+  const authUser = req.authUser;
+
+  //Si imprimimos el usuario por consola no se le apliacara la funcion toJSON()
+  //console.log(authUser);
   //fisicamente
   //const user = await User.findByIdAndDelete(id);
+
+  //const authenticatedUser = 
 
   //logicamente
   const user = await User.findByIdAndUpdate(id, {state:false}, {new:true}, (error, model) => {
@@ -116,7 +120,8 @@ const deleteUser = async (req = request, res = response) => {
     }
     res.json({
       msg: 'DELETE API REQUEST FROM CONTROLLER',
-      user: model.toJSON()
+      user: model.toJSON(),
+      authUser
     })
   });
 }

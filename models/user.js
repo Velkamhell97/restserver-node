@@ -35,7 +35,8 @@ const userSchema = Schema({
 //una funcion flecha no utiliza el objeto this como la referencia actual para estos casos se utiliza el function
 userSchema.methods.toJSON = function() {
   //Esto genera la instanacia creada pero con sus propiedades como si fuera un objeto de javascript
-  const { __v, password, ...user } = this.toObject();
+  const { __v, password, _id, ...user } = this.toObject();
+  user.uid = _id;
   return user;
 }
 
