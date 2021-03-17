@@ -3,28 +3,8 @@ const bcryptjs = require('bcryptjs');
 const User = require('../models/user');
 
 const getUser = async (req = request, res = response) => {
-  //res.send('Hello World!');
-  //Con la destructuracion podemos definir valores por defecto
-  //const {q, nombre = "No name", apikey, page = 1, limit = 10}= req.query;
-
-  // res.json({
-  //   msg: 'GET API REQUEST FROM CONTROLLER',
-  //   q,
-  //   nombre,
-  //   apikey,
-  //   page,
-  //   limit
-  // })
-
   const { limit = 5, desde = 0 } = req.query; 
   const query = { state:true }
-
-  //todo validacion de que el limite y desde sea un numero y no un texto
-  // const users = await User.find(query)
-  //   .skip(Number(desde))  
-  //   .limit(Number(limit));
-
-  //const total = await User.countDocuments(query);
 
   //Mas rapidas se ejecutan en paralelo
   const [total, users] = await Promise.all([
@@ -33,7 +13,7 @@ const getUser = async (req = request, res = response) => {
   ])
 
   res.json({
-    msg: 'GET API REQUEST FROM CONTROLLER',
+    msg: 'Users get successfully',
     total,
     count: users.length,
     users
@@ -41,14 +21,10 @@ const getUser = async (req = request, res = response) => {
 }
 
 const postUser = async(req = request, res = response) => {
-  //res.send('Hello World!');
-  //Se puede hacer destructuring para recibir unicamente la informacion que yo necesito
+  //Con el destructuring se pueden recibir unicamente los parametros que queremos
   const { name, email, password, role } = req.body;
   const user = new User({name, email, password, role});
 
-  //encriptacion
-  //es el numero de iteraciones (vueltas) que deben hacerse para encriptar la contraseña entre mas alta mas segura
-  //pero mas tiempo tarda generandola
   const salt = bcryptjs.genSaltSync(10);
   user.password = bcryptjs.hashSync(password, salt);
 
@@ -60,70 +36,65 @@ const postUser = async(req = request, res = response) => {
       user
     });
   } catch (error){
+    console.log(error);
+
     return res.status(500).json({
       msg: 'No se pudo grabar el usuario en la base de datos',
       error
     });
   }
-  // res.json({
-  //   msg: 'POST API REQUEST FROM CONTROLLER',
-  //   ...body
-  // });
 }
 
 const putUser = async (req = request, res = response) => {
-  //res.send('Hello World!');
-  const { id }= req.params;
-  //se debe evitar recibir alguna variable _id que entre en conflicto con el _id de la base de datos
+  //El resto del objeto es tambien utilizado para descartar valores
   const { _id, password, google, ...rest } = req.body;
+  const { id }= req.params;
 
   if(password) {
     const salt = bcryptjs.genSaltSync(10);
     rest.password = bcryptjs.hashSync(password, salt);
   }
 
-  //const user = await User.findByIdAndUpdate(id, rest, {new: true, context: 'query'}, function (error, model) {
-  const user = await User.findByIdAndUpdate(id, rest, {new: true}, (error, model) => {
-    if(error) {
-      return res.status(500).json({
-        msg: 'No se pudo actualizar el usuario en la base de datos',
-        error
-      })
-    }
+  //Tener en cuenta las opciones: {new: true, context: 'query'}
+  try {
+    const user = await User.findByIdAndUpdate(id, rest, {new: true});
+      
     res.json({
-      msg: 'PUT API REQUEST FROM CONTROLLER',
-      user: model.toJSON()
+      msg: 'User update successfully',
+      user
     })
-  });
+  } catch (error) {
+    console.log(error);
 
+    return res.status(500).json({
+      msg: 'No se pudo actualizar el usuario en la base de datos',
+      error
+    })
+  }
 }
 
 const deleteUser = async (req = request, res = response) => {
-  //res.send('Hello World!');
   const { id } = req.params;
-  const authUser = req.authUser;
 
-  //Si imprimimos el usuario por consola no se le apliacara la funcion toJSON()
-  //console.log(authUser);
-  //fisicamente
+  //Borrar fisicamente
   //const user = await User.findByIdAndDelete(id);
 
-  //const authenticatedUser = 
+  //Borrar logicamente
+  try {
+    const user = await User.findByIdAndUpdate(id, {state:false}, {new:true});
 
-  //logicamente
-  const user = await User.findByIdAndUpdate(id, {state:false}, {new:true}, (error, model) => {
-    if(error) {
-      return res.status(500).json({
-        msg: 'No se pudo eliminar el usuario en la base de datos',
-        error
-      })
-    }
     res.json({
-      msg: 'DELETE API REQUEST FROM CONTROLLER',
-      user: model.toJSON(),
-      authUser
+      msg: 'User delete successfully',
+      user
     })
-  });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      msg: 'No se pudo eliminar el usuario en la base de datos',
+      error
+    })
+  }
 }
 
 module.exports = {

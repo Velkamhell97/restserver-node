@@ -9,10 +9,8 @@ const { getUser, postUser, putUser, deleteUser } = require('../controllers/user'
 
 const router = Router();
 
-//Como se utilizara un middleware al momento de llamar este archivo no es necesario colocar la ruta
 router.get('/', getUser)
 
-//Como se pasa la referencia de la funcion los parametros del metodo req,res son pasados a la funcion como argumentos
 router.post('/',[
   check('name', 'El nombre es obligatorio').not().isEmpty(),
   check('password', 'El password debe ser mayor de 6 caracteres').isLength({min:6}),

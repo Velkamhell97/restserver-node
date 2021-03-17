@@ -2,7 +2,6 @@ const User = require('../models/user');
 const Role = require('../models/role');
 
 const isValidRole = async(role = '') => {
-  //console.log(await Role.find({}));-> muestra todos los registros
   const roleExist = await Role.findOne({role});
   if(!roleExist){
     throw new Error(`El rol ${role} no esta registrado en la base de datos`);

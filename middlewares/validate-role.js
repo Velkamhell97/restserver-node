@@ -18,9 +18,7 @@ const isAdmin = (req = request, res = response, next) => {
   next();
 }
 
-//cuando se quiere utilizar un middleware al cual no se le pase como parametros principales los de req, res y next
-//se pueden utilizar los parametros propios, pero al final se debe regresar una funcion que reciba los parametros
-//por defecto
+//Podemos recibir parametros propios pero al final debemos devolver una funcion con los parametros req,res,next
 const hasRole = (...roles) => {
   return (req = request, res = response, next) => {
     if(!req.authUser){
