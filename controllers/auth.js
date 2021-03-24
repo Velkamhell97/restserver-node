@@ -3,6 +3,7 @@ const bcryptjs = require('bcryptjs');
 
 const User = require('../models/user');
 const { generateJWT } =require('../helpers/generate-jws');
+const { googleVerify } = require('../helpers/google-verify');
 
 const login = async(req = request, res = response) => {
   const { email, password } = req.body;
@@ -46,6 +47,52 @@ const login = async(req = request, res = response) => {
   }
 }
 
+const google = async(req = request, res = response) => {
+  const { id_token } = req.body;
+ 
+  try {
+    const { name, email, img } = await googleVerify(id_token);
+
+    let user = await User.findOne({email});
+
+    //aqui depende de nosotros definir como manejar esta validacion si decirle que ya tiene una cuenta
+    //con el correo de la app o dejarlo autenticar solo con el password o dejarlo seguir
+    
+    //Si el usuario no existe tengo que crearlo
+    if(!user){
+      const data = {
+        name,
+        email,
+        password:':P', //El password no es importante en este tipo de autenticacion ya que se utiliza la de google
+        img,
+        google:true
+      }
+
+      user = new User(data);
+      await user.save();
+    }
+
+    if(!user.state){
+      res.status(401).json({
+        msg:'Usuario bloqueado'
+      })
+    }
+
+    const token = await generateJWT( user.id )
+    
+    res.json({
+      msg:'Todo Ok google sign',
+      user,
+      token
+    })
+  } catch (error) {
+    res.status(400).json({
+      msg:'Token de google no es valido',
+    })
+  }
+}
+
 module.exports = {
-  login
+  login,
+  google
 }
