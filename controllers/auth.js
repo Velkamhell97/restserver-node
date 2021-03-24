@@ -10,6 +10,7 @@ const login = async(req = request, res = response) => {
 
   try {
     const user = await User.findOne({email});
+
     if(!user){
       return res.status(400).json({
         msg: 'Usuario / Password no son correctos - correo'
@@ -55,15 +56,11 @@ const google = async(req = request, res = response) => {
 
     let user = await User.findOne({email});
 
-    //aqui depende de nosotros definir como manejar esta validacion si decirle que ya tiene una cuenta
-    //con el correo de la app o dejarlo autenticar solo con el password o dejarlo seguir
-    
-    //Si el usuario no existe tengo que crearlo
     if(!user){
       const data = {
         name,
         email,
-        password:':P', //El password no es importante en este tipo de autenticacion ya que se utiliza la de google
+        password:':P',
         img,
         google:true
       }
