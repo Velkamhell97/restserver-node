@@ -8,9 +8,14 @@ class Server {
     //Initialization
     this.app  = express();
     this.port = process.env.PORT;
-    this.userRoutes = '/api/users';
-    this.authRoutes = '/api/auth';
-      
+
+    this.paths = { //Es buena practica organizar el codigo en orden alfabetico
+      auth       : '/api/auth',
+      categories : '/api/categories',
+      products   : '/api/products',
+      searchs    : '/api/searchs',
+      users      : '/api/users',
+    }      
 
     //DB Connect
     this.database();
@@ -39,10 +44,19 @@ class Server {
 
   routes() {
     //Auth routes
-    this.app.use(this.authRoutes, require('../routes/auth'));
+    this.app.use(this.paths.auth, require('../routes/auth'));
+
+    //Categories routes
+    this.app.use(this.paths.categories, require('../routes/categories'));
+    
+    //Products routes
+    this.app.use(this.paths.products, require('../routes/products'));
+
+    //Searchs routes
+    this.app.use(this.paths.searchs, require('../routes/searchs'));
 
     //User routes
-    this.app.use(this.userRoutes, require('../routes/user'));
+    this.app.use(this.paths.users, require('../routes/users'));
   }
 
   listen() {

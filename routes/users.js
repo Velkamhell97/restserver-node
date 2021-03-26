@@ -5,7 +5,7 @@ const { hasRole, isAdmin, isValidJWT, validateFields } = require('../middlewares
 
 const { isValidRole, emailExist, existUserById, emailUpdate } = require('../helpers/db-validators');
 
-const { getUser, postUser, putUser, deleteUser } = require('../controllers/user');
+const { getUser, postUser, putUser, deleteUser } = require('../controllers/users');
 
 const router = Router();
 
