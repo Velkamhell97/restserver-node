@@ -70,7 +70,6 @@ const searchRelation = async(req = request, res = response) => {
   switch(collection) {
     case 'categories':
       try {
-        console.log('categories')
         const categories = await searchCategoriesRelations(req.query);
 
         res.json({
