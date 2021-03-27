@@ -8,28 +8,8 @@ const {
   searchCategoriesRelations  
 } = require('../helpers/db-searchs');
 
-const allowedCollections = [
-  'categories',
-  'products',
-  'roles',
-  'users',
-]
-
-const allowedQuerys = [
-  'category',
-  'product',
-  'rol',
-  'user',
-]
-
 const search = async(req = request, res = response) => {
   const { collection, word } = req.params;
-
-  if(!allowedCollections.includes(collection)){
-    return res.status(400).json({
-      msg: `La coleccion ${collection} no esta permitida - colecciones permitidas: ${allowedCollections}`
-    })
-  }
 
   switch(collection) {
     case 'categories':
@@ -86,31 +66,11 @@ const search = async(req = request, res = response) => {
 
 const searchRelation = async(req = request, res = response) => {
   const { collection } = req.params;
-  const { category, user, ...others }= req.query;
-  const invalidQuerys = Object.keys(others);
-
-  if(Object.keys(req.query).length == 0){
-    return res.status(400).json({
-      msg:'Debes enviar algun criterio de busqueda'
-    })
-  }
-
-  if(!allowedCollections.includes(collection)){
-    return res.status(400).json({
-      msg: `La coleccion ${collection} no esta permitida - colecciones permitidas: ${allowedCollections}`
-    })
-  }
-
-  if(invalidQuerys.length > 0){
-    return res.status(400).json({
-      msg: `La busqueda por ${invalidQuerys} no esta permitida - busquedas permitidas: ${allowedQuerys}`
-    })
-  }
 
   switch(collection) {
     case 'categories':
       try {
-        const categories = await searchCategoriesRelations(user);
+        const categories = await searchCategoriesRelations(req.query);
 
         res.json({
           count: categories.length,
@@ -125,7 +85,7 @@ const searchRelation = async(req = request, res = response) => {
       }
     case 'products':
       try {
-        const products = await searchProductsRelations(category, user);
+        const products = await searchProductsRelations(req.query);
 
         res.json({
           count: products.length,

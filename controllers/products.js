@@ -53,6 +53,7 @@ const createProduct = async (req = request, res = response) => {
   }
 
   data.user = req.authUser._id;
+  data.user_name = req.authUser.name;
 
   try {
     const product = new Product(data);

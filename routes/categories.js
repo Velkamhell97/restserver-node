@@ -14,15 +14,7 @@ const { nameCategoryUpdate, existCategoryById } = require('../helpers/db-validat
 
 const router = Router();
 
-/**
- * GET - obtener todas las categorias - publico
- */
-
 router.get('/', getCategories)
-
-/**
- * GET - obtener  una categoria por ID - publico
- */
 
 router.get('/:id',[
   check('id','El id no es valido').isMongoId(),
@@ -30,19 +22,11 @@ router.get('/:id',[
   validateFields
 ], getCategoryById)
 
-/**
- * POST - crear categoria - privado - cualquier persona con un token valido
- */
-
 router.post('/',[
   isValidJWT,
   check('name','El nombre es obligatorio').not().isEmpty(),
   validateFields
 ], createCategory)
-
-/**
- * PUT - actualizar categoria - privado - cualquier persona con un token valido
- */
 
 router.put('/:id',[
   isValidJWT,
@@ -52,10 +36,6 @@ router.put('/:id',[
   check('name').custom(nameCategoryUpdate),
   validateFields
 ], updateCategory)
-
-/**
- * DELETE - eliminar categoria - privado - cualquier persona con un token valido
- */
 
 router.delete('/:id',[
   isValidJWT,

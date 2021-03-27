@@ -1,6 +1,35 @@
 const { User, Role, Category, Product } = require('../models');
 
 /**
+ * ---------------------ALL HELPERS----------------------------------------
+ */
+
+const validateCollection = (collection = '', validCollections = []) => {
+  if(!validCollections.includes(collection)){
+    throw new Error(`La coleccion ${collection} no esta permitida - colecciones permitidas: ${validCollections}`)
+  }
+
+  return true;
+}
+
+const validateQuerys = (querys = {}, validQuerys = []) => {
+
+  const queryKeys = Object.keys(querys);
+
+  if(queryKeys.length == 0) {
+    throw new Error(`Debes enviar algun criterio de busqueda`);
+  }
+
+  const invalidQuerys = queryKeys.filter(key => !validQuerys.includes(key.toLocaleLowerCase()));
+    
+  if(invalidQuerys.length > 0){
+    throw new Error(`La busqueda por ${invalidQuerys} no esta permitida - busquedas permitidas: ${validQuerys}`)
+  }
+
+  return true;
+}
+
+/**
  * ---------------------USERS HELPERS----------------------------------------
  */
 
@@ -72,6 +101,8 @@ const existProductById = async(id) => {
 }
 
 module.exports = {
+  validateCollection,
+  validateQuerys,
   isValidRole,
   emailExist,
   existUserById,

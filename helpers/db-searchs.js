@@ -1,23 +1,65 @@
 const { Category, Product, User} = require('../models');
 const { ObjectId } = require('mongoose').Types;
 
+const capitalizeFirst = (name) => {
+  if(!name) {
+    return undefined;
+  }
+
+  return name[0].toUpperCase() + name.slice(1).toLowerCase();
+}
+
+/**********************SINGLE********************/
+
+const searchById = async (collection, id) => {
+  const isMongoID = ObjectId.isValid(id);
+
+  const query = {_id:id, state:true}
+
+  let result = null;
+
+  if(isMongoID){
+    switch(collection){
+      case "categories":
+        result = await Category.findOne(query).populate('user','name');
+
+        if(!result){
+          throw new Error(`No existe una categoria con el id: ${id}`);
+        }
+
+        break;
+      case "products":
+        result = await Product.findOne(query).populate('category','name').populate('user','name');
+
+        if(!result){
+          throw new Error(`No existe un producto con el id: ${id}`);
+        }
+
+        break;
+      case "users":
+        result = await User.findOne(query);
+
+        if(!result){
+          throw new Error(`No existe un usuario con el id: ${id}`);
+        }
+
+        break;
+    }
+
+    return [result];
+  }
+}
+
 /**
  * Search categories by ID or Name
  */
 
  const searchCategories = async (word = '') => {
 
-  const isMongoID = ObjectId.isValid(word);
+  const categoryById = await searchById('categories',word);
 
-  if(isMongoID) {
-    const category = await Category.findOne({_id:word, state:true})
-    .populate('user','name');
-
-    if(!category){
-      throw new Error(`No existe una categoria con el id: ${word}`);
-    }
-    
-    return [category];
+  if(categoryById) {
+    return categoryById;
   }
 
   const regex = new RegExp(word,'i');
@@ -33,18 +75,10 @@ const { ObjectId } = require('mongoose').Types;
 
  const searchProducts = async (word = '') => {
 
-  const isMongoID = ObjectId.isValid(word);
+  const productById = await searchById('products',word);
 
-  if(isMongoID) {
-    const product = await Product.findOne({_id:word, state:true})
-    .populate('category','name')
-    .populate('user','name');
-
-    if(!product){
-      throw new Error(`No existe un producto con el id: ${word}`);
-    }
-
-    return [product];
+  if(productById) {
+    return productById;
   }
 
   const regex = new RegExp(word,'i');
@@ -66,16 +100,10 @@ const { ObjectId } = require('mongoose').Types;
 
 const searchUsers = async (word = '') => {
 
-  const isMongoID = ObjectId.isValid(word);
+  const userById = await searchById('users',word);
 
-  if(isMongoID) {
-    const user = await User.findOne({_id:word, state:true});
-
-    if(!user){
-      throw new Error(`No existe un usuario con el id: ${word}`);
-    }
-
-    return [user];
+  if(userById) {
+    return userById;
   }
 
   const regex = new RegExp(word,'i');
@@ -90,154 +118,105 @@ const searchUsers = async (word = '') => {
 
 /**********************RELATIONSHIPS********************/
 
-const getCategory = async (query) => {
-  let dbQuery = {...query};
+const searchCollectionRelations = async(collection, values) => {
+  const query = Object.entries(values).map(value => ({[value[0]]:ObjectId(value[1])}));
+  
+  let results = null;
 
-  if(query.name){
-    dbQuery = {name: query.name.toUpperCase()};
+  switch(collection){
+    case "categories":
+      results = await Category.find({$and:query}).populate('user','name');
+      break;
+    case "products":
+      results = await Product.find({$and:query}).populate('category','name').populate('user','name');
+      break;
+  }
+      
+  if(!results){
+    let error = '';
+
+    Object.entries(values).map(value => {
+      error += `${value[0]}(ID)=${value[1]}, `
+    } );
+
+    throw new Error(`No se encuentran ${collection} para los criterios ${error}, verifique los ids`);
   }
 
-  const category = await Category.findOne(dbQuery);
-
-  if(!category){
-    const error = query._id
-      ? `No existe una categoria con el id: ${query._id}`
-      : `No existe una categoria llamada: ${query.name}`
-
-    throw new Error(error);
-  }
-
-  return category;
-}
-
-const getUser = async (query) => {
-  let dbQuery = {...query};
-
-  if(query.name){
-    const regex = new RegExp("^" + query.name.toLowerCase(), "i");
-    dbQuery = {name: regex};
-  }
-
-  const user = await User.findOne(dbQuery);
-
-  if(!user){
-    const error = query._id
-      ? `No existe un usuario con el id: ${query._id}`
-      : `No existe un usuario llamado: ${query.name}`
-
-    throw new Error(error);
-  }
-
-  return user;
+  return results;
 }
 
 /**
  * Search Products by Category and User
  */
 
- const searchProductsRelations = async (category, user) => {
+ const searchProductsRelations = async (relations) => {
 
-  const isCategoryMongoID = ObjectId.isValid(category);
-  const isUserMongoID = ObjectId.isValid(user);
+  const categoryDB = await (await Category.findOne({name:relations?.category?.toUpperCase(), state:true}))?.id;
+  const userDB = await (await User.findOne({name:capitalizeFirst(relations.user), state:true}))?.id;
 
-  if(category && user){
+  const collectionsArray = [['category',categoryDB],['user',userDB]]
+  const relationArray = collectionsArray.filter(group => !group.includes(undefined));
 
-    if(isCategoryMongoID && isUserMongoID) {
-      const categoryDB = await getCategory({_id:category, state:true});
-      const userDB = await getUser({_id:user, state:true});
+  if(relationArray.length == 0){
 
-      const productsByCategoryAndUser = await Product.find({
-        $and: [{category:ObjectId(category)}, {user:ObjectId(user)}, {state:true}]
-      })
-      .populate('category','name')
-      .populate('user','name');
+    try {
+      const productsFilteredById = await searchCollectionRelations('products', {...relations});
 
-      return productsByCategoryAndUser;
+      if(productsFilteredById){
+        return productsFilteredById;
+      }
+    } catch (e) {
+      let error = '';
+
+      Object.entries(relations).map(value => {
+        error += `${value[0]}(Name)=${value[1]}, `
+      } );
+
+      throw new Error(`No se encuentran productos para los criterios ${error}, verifique los nombres`);
     }
-
-    const categoryDB = await getCategory({name:category, state:true});
-    const userDB = await getUser({name:user, state:true});
-
-    const productsByCategoryAndUser = await Product.find({
-      $and: [{category:ObjectId(categoryDB._id)}, {user:ObjectId(userDB._id)}, {state:true}]
-    })
-    .populate('category','name')
-    .populate('user','name');
-
-    return productsByCategoryAndUser;
-
-  } else if(category) {
-
-    if(isCategoryMongoID) {
-      const categoryDB = await getCategory({_id:category, state:true});
-
-      const productsByCategory = await Product.find({
-        category:ObjectId(category), state:true
-      })
-      .populate('category','name')
-      .populate('user','name');
-
-      return productsByCategory;
-    }
-  
-    const categoryDB = await getCategory({name:category, state:true});
-
-    const productsByCategory = await Product.find({
-      category:categoryDB._id, state:true
-    })
-    .populate('category','name')
-    .populate('user','name');
-
-    return productsByCategory;
-
-  } else if(user){
-    if(isUserMongoID) {
-      const userDB = await getUser({_id:user, state:true});
-
-      const productsByUser = await Product.find({
-        user:ObjectId(user), state:true
-      })
-      .populate('category','name')
-      .populate('user','name');
-      
-      return productsByUser;
-    }
-
-    const userDB = await getUser({name:user, state:true});
-  
-    const productsByUser = await Product.find({
-      user:userDB._id, state:true
-    }) 
-    .populate('category','name')
-    .populate('user','name');
-
-    return productsByUser;
   }
+
+  const relationNames = Object.fromEntries(relationArray);
+
+  const productsFilteredByName = await searchCollectionRelations('products', {...relationNames});
+
+  return productsFilteredByName;
 }
 
-const searchCategoriesRelations = async (user) => {
+/**
+ * Search Categories by User
+ */
 
-  const isUserMongoID = ObjectId.isValid(user);
+ const searchCategoriesRelations = async (relations) => {
 
-  if(isUserMongoID) {
-    const userDB = await getUser({_id:user, state:true});
+  const userDB = await (await User.findOne({name:capitalizeFirst(relations.user), state:true}))?.id;
 
-    const categoriesByUser = await Category.find({
-      user:ObjectId(user), state:true
-    })
-    .populate('user','name');
-    
-    return categoriesByUser;
+  const collectionsArray = [['user',userDB]]
+  const relationArray = collectionsArray.filter(group => !group.includes(undefined));
+
+  if(relationArray.length == 0){
+    try {
+      const categoriesFilteredById = await searchCollectionRelations('categories', {...relations});
+
+      if(categoriesFilteredById){
+        return categoriesFilteredById;
+      }
+    } catch (e) {
+      let error = '';
+
+      Object.entries(relations).map(value => {
+        error += `${value[0]}(Name)=${value[1]}, `
+      } );
+
+      throw new Error(`No se encuentran categorias para los criterios ${error}, verifique los nombres`);
+    }
   }
 
-  const userDB = await getUser({name:user, state:true});
+  const relationNames = Object.fromEntries(relationArray);
 
-  const categoriesByUser = await Category.find({
-    user:userDB._id, state:true
-  }) 
-  .populate('user','name');
+  const categoriesFilteredByName = await searchCollectionRelations('products', {...relationNames});
 
-  return categoriesByUser;
+  return categoriesFilteredByName;
 }
 
 module.exports = {
