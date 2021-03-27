@@ -123,12 +123,15 @@ const searchCollectionRelations = async(collection, values) => {
   
   let results = null;
 
+  //console.log(collection);
+
   switch(collection){
     case "categories":
-      results = await Category.find({$and:query}).populate('user','name');
+      console.log('entre')
+      results = await Category.find({$and:[...query,{state:true}]}).populate('user','name');
       break;
     case "products":
-      results = await Product.find({$and:query}).populate('category','name').populate('user','name');
+      results = await Product.find({$and:[...query,{state:true}]}).populate('category','name').populate('user','name');
       break;
   }
       
@@ -214,7 +217,7 @@ const searchCollectionRelations = async(collection, values) => {
 
   const relationNames = Object.fromEntries(relationArray);
 
-  const categoriesFilteredByName = await searchCollectionRelations('products', {...relationNames});
+  const categoriesFilteredByName = await searchCollectionRelations('categories', {...relationNames});
 
   return categoriesFilteredByName;
 }
